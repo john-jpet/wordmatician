@@ -1,0 +1,37 @@
+[gd_scene load_steps=6 format=3 uid="uid://s8h3sa7yv4fk"]
+
+[ext_resource type="Script" uid="uid://bebgy1js5erl5" path="res://Scripts/letter_tile.gd" id="1_cxnrs"]
+[ext_resource type="Texture2D" uid="uid://b7haj2qse2cfl" path="res://Assets/basetile.png" id="2_ggsbo"]
+[ext_resource type="FontFile" uid="uid://dc22s0q3eshjf" path="res://Assets/Exo2-Bold.ttf" id="3_ggsbo"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_cxnrs"]
+font = ExtResource("3_ggsbo")
+font_size = 75
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_cxnrs"]
+size = Vector2(128, 127)
+
+[node name="LetterTile" type="Node2D"]
+script = ExtResource("1_cxnrs")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_ggsbo")
+
+[node name="Label" type="Label" parent="."]
+offset_left = -172.0
+offset_top = -121.0
+offset_right = 173.0
+offset_bottom = 116.0
+text = "A"
+label_settings = SubResource("LabelSettings_cxnrs")
+horizontal_alignment = 1
+vertical_alignment = 1
+uppercase = true
+
+[node name="Area2D" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
+position = Vector2(0, -0.5)
+shape = SubResource("RectangleShape2D_cxnrs")
+
+[connection signal="input_event" from="Area2D" to="." method="_on_area_2d_input_event"]
