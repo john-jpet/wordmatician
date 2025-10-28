@@ -17,3 +17,9 @@
 # OS cruft
 .DS_Store
 Thumbs.db
+
+# Ignore build outputs
+Builds/
+*.exe
+*.zip
+*.pck
