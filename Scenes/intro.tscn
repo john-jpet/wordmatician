@@ -1,0 +1,77 @@
+[gd_scene load_steps=6 format=3 uid="uid://intro_scene"]
+
+[ext_resource type="Script" path="res://Scripts/intro.gd" id="1_intro"]
+[ext_resource type="Texture2D" path="res://Assets/bg.png" id="2_bg"]
+[ext_resource type="FontFile" path="res://Assets/Exo2-Bold.ttf" id="3_font"]
+[ext_resource type="FontFile" path="res://Assets/Exo2-Regular.ttf" id="4_fontregular"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_title"]
+font = ExtResource("3_font")
+font_size = 96
+font_color = Color(1, 1, 1, 1)
+outline_size = 8
+outline_color = Color(0.1, 0.15, 0.3, 0.8)
+shadow_color = Color(0, 0, 0, 0.4)
+shadow_offset = Vector2(4, 6)
+
+[sub_resource type="LabelSettings" id="LabelSettings_subtitle"]
+font = ExtResource("4_fontregular")
+font_size = 44
+font_color = Color(0.85, 0.9, 1, 1)
+outline_size = 4
+outline_color = Color(0.1, 0.15, 0.3, 0.6)
+
+[node name="Intro" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_intro")
+
+[node name="Bg" type="Sprite2D" parent="."]
+position = Vector2(364.5, 640)
+scale = Vector2(0.79, 0.92)
+texture = ExtResource("2_bg")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -200.0
+offset_right = 300.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Wordmatician"
+label_settings = SubResource("LabelSettings_title")
+horizontal_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "make words. beat the clock."
+label_settings = SubResource("LabelSettings_subtitle")
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 48)
+
+[node name="PlayButton" type="Button" parent="VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+custom_minimum_size = Vector2(240, 72)
+text = "PLAY"
+
+[connection signal="pressed" from="VBox/PlayButton" to="." method="_on_play_pressed"]

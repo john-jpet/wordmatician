@@ -145041,6 +145041,7 @@ stanchioned
 stanchions
 stanchly
 stand
+standalone
 standard
 standardbred
 standardbreds

@@ -1,11 +1,18 @@
 extends Node2D
 
-@onready var grid_node := $Grid
+#Preload Scenes
 var popup_scene := preload("res://Scenes/pop_up_text.tscn")
+var tile_scene := preload("res://Scenes/letter_tile.tscn")
+
+@onready var grid_node := $Grid
 @onready var popup_layer := $UI/PopupLayer
+
 var active_popups: Array = []
+var global_time := 0.0
+var board: Array = []
 
 
+const LETTERS := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const GRID_SIZE := 5
 const TILE_SIZE := 128          # size of each tile (px)
 const TILE_GAP  := 12          # gap between tiles (px)
@@ -13,14 +20,14 @@ const TILE_GAP  := 12          # gap between tiles (px)
 # Otherwise leave 0 to center in the whole screen.
 const UI_TOP_RESERVED := 0
 
-var global_time := 0.0
-var board: Array = []
-var tile_scene := preload("res://Scenes/letter_tile.tscn")
+
 var selected_letters = []
 var dictionary = {}
 var score: int = 0
 var combo: int = 0
 var base_points: int = 1  # starting value for scoring
+var words_found: int = 0
+var longest_word: String = ""
 
 var displayed_score: int = 0
 var score_tween: Tween = null
@@ -35,6 +42,14 @@ var LETTER_WEIGHTS := [
 	["F", 2.2], ["G", 2.0], ["Y", 2.0], ["P", 1.9], ["B", 1.5],
 	["V", 1.0], ["K", 0.8], ["J", 0.15], ["X", 0.15], ["Q", 0.10], ["Z", 0.07]
 ]
+var LETTER_FREQUENCY := {
+	"E": 0, "T": 0, "A": 0, "O": 0, "I": 0,
+	"N" : 0, "S": 0, "H": 0, "R": 0, "D": 0,
+	"L": 0, "C": 0, "U": 0, "M": 0, "W": 0,
+	"F": 0, "G": 0, "Y": 0, "P": 0, "B": 0,
+	"V": 0, "K": 0, "J": 0, "X": 0, "Q": 0, "Z": 0
+}
+const LETTER_CAP = 5
 
 const VOWEL_MULTIPLIER := 1.25  # boost vowels a bit more for QoL
 var _cdf: PackedFloat32Array = []
@@ -68,6 +83,181 @@ const PU_RATE_WILD := 0.03
 # --- WILD CARD ---
 var wild_card_exists := false
 
+func _ready():
+	var settings = LabelSettings.new()
+	settings.font = preload("res://Assets/Exo2-Bold.ttf")
+	settings.shadow_size = 20
+	settings.shadow_color = Color(0, 0, 0, 0.4)
+	settings.font_size = 100
+	
+	score_label.label_settings = settings
+	
+	randomize()
+	_build_weight_cdf()
+	_center_grid()
+	generate_grid()
+	ensure_playable_after_spawn()
+	load_dictionary()
+	_build_word_counts()
+	create_buttons()
+	$UI/CurrentWordLabel.text = ""
+
+# Take a fast snapshot of board multiplicities + wildcards + bitmask
+func _board_counts_mask_wild() -> Dictionary:
+	var have := PackedInt32Array(); have.resize(26)
+	var wild := 0
+	var mask := 0
+	for row in board:
+		for t in row:
+			if t == null or not is_instance_valid(t): continue
+			if t.powerup == "wild_card":
+				wild += 1
+				continue
+			var L := String(t.letter).to_upper()
+			if L.length() != 1: continue
+			var idx := LETTERS.find(L)
+			if idx >= 0:
+				have[idx] += 1
+				mask |= (1 << idx)
+	return {"have": have, "wild": wild, "mask": mask}
+
+func board_has_playable_word():
+	var snap := _board_counts_mask_wild()
+	var have: PackedInt32Array = snap["have"] as PackedInt32Array
+	var wild: int = int(snap["wild"])
+
+	for item in _dict_precomp:
+		var need: PackedInt32Array = item["need"] as PackedInt32Array
+		var word_str: String = String(item["word"])  # your stored word
+		var deficit := 0
+
+		for i in 26:
+			var d := need[i] - have[i]
+			if d > 0:
+				deficit += d
+				if deficit > wild:
+					break
+
+		if deficit <= wild:
+			
+			print("[Playable word found]: ", word_str)
+			return true  # early exit when we find one
+
+	
+	print("[No playable words found on this board]")
+	return false
+
+
+var _dict_precomp: Array = []  # entries: {word:String, len:int, need:PackedInt32Array}
+
+func _build_word_counts():
+	_dict_precomp.clear()
+	for w in dictionary.keys():
+		var u := String(w).to_upper()
+		if u.length() < 3:   # ignore tiny words if your min length is 3
+			continue
+		var need := PackedInt32Array()
+		need.resize(26)
+		for i in u.length():
+			var ch := u[i]
+			var idx := LETTERS.find(ch)
+			if idx >= 0:
+				need[idx] += 1
+		_dict_precomp.append({"word": u, "len": u.length(), "need": need})
+	# Optional: shortest first so we early-exit faster
+	_dict_precomp.sort_custom(func(a, b): return a.len < b.len)
+	
+func _current_letter_counts() -> Dictionary:
+	var d := {}
+	for row in board:
+		for t in row:
+			if t == null or not is_instance_valid(t):
+				continue
+			# Don't count wildcards toward any letter cap
+			if t.powerup == "wild_card":
+				continue
+			var L := String(t.letter).to_upper()
+			if L.length() != 1:
+				continue
+			d[L] = int(d.get(L, 0)) + 1
+	return d
+
+func ensure_playable_after_spawn(max_attempts := 3, reroll_each := 5) -> void:
+	var attempt := 0
+	while attempt < max_attempts and not board_has_playable_word():
+		_reroll_some_tiles(reroll_each)
+		attempt += 1
+	# Final guarantee
+	if not board_has_playable_word():
+		_force_embed_easy_word_scatter()
+# Prefer common letters; skip wildcards
+const _COMMON := ["E","A","R","I","O","T","N","S","L","C","U","D","M"]
+
+func _reroll_some_tiles(k := 5) -> void:
+	# Gather candidate cells
+	var cells: Array = []
+	for y in range(GRID_SIZE):
+		for x in range(GRID_SIZE):
+			var t = board[y][x]
+			if t != null and is_instance_valid(t) and t.powerup != "wild_card":
+				cells.append(Vector2i(x, y))
+	cells.shuffle()
+
+	# Start from current counts so the cap is honored across the batch
+	var live_counts := _current_letter_counts()  # your Dictionary<String,int>
+
+	for i in range(min(k, cells.size())):
+		var pos: Vector2i = cells[i]
+		var t = board[pos.y][pos.x]
+		if t == null or not is_instance_valid(t): continue
+
+		# Bias a bit toward common letters by temporarily nudging weights
+		var newL := _pick_weighted_letter(live_counts)  # already cap-aware
+		# If you want extra bias: try reroll until common (limit tries)
+		var tries := 0
+		while not (_COMMON.has(newL)) and tries < 2:
+			newL = _pick_weighted_letter(live_counts)
+			tries += 1
+
+		# Update the tile’s letter but keep its powerup
+		if t.has_method("set_letter"):
+			t.set_letter(newL, t.powerup)
+		else:
+			t.letter = newL
+func _force_embed_easy_word_scatter():
+	# Collect easy 3–4 letter candidates without J/Q/X/Z
+	var candidates: Array[String] = []
+	for entry in _dict_precomp:
+		var w: String = String(entry["word"])
+		var wlen: int = int(entry["len"])
+		if wlen >= 3 and wlen <= 4 and not w.match(".*[JQXZ].*"):
+			candidates.append(w)
+
+	if candidates.is_empty():
+		return
+
+	var chosen: String = candidates[randi() % candidates.size()]
+
+	# Pick random distinct tiles and overwrite letters (scatter; no adjacency needed)
+	var spots: Array = []
+	for y in range(GRID_SIZE):
+		for x in range(GRID_SIZE):
+			var t = board[y][x]
+			if t != null and is_instance_valid(t):
+				spots.append(Vector2i(x, y))
+	spots.shuffle()
+
+	var limit: int = int(min(chosen.length(), spots.size()))
+	for i in range(limit):
+		var pos: Vector2i = spots[i]
+		var t = board[pos.y][pos.x]
+		if t == null or not is_instance_valid(t): continue
+		var L := String(chosen[i])
+		if t.has_method("set_letter"):
+			t.set_letter(L, t.powerup)
+		else:
+			t.letter = L
+
 func _roll_powerup() -> String:
 	# --- Handle Wild Card separately ---
 	if not wild_card_exists and randf() < PU_RATE_WILD:
@@ -84,35 +274,11 @@ func _roll_powerup() -> String:
 		return "x2"
 	return "none"
 
-
-func _ready():
-	var settings = LabelSettings.new()
-	#settings.outline_size = 20
-	#settings.outline_color = Color(0, 0.3, 0.8, 1)  # soft blue outline
-	settings.font = preload("res://Assets/Exo2-Bold.ttf")  # <-- your font
-	settings.shadow_size = 20
-	settings.shadow_color = Color(0, 0, 0, 0.4)
-	settings.font_size = 100
-	
-	score_label.label_settings = settings
-	
-	randomize()
-	_build_weight_cdf()
-	_center_grid()
-	generate_grid()
-	load_dictionary()
-	create_buttons()
-	$UI/CurrentWordLabel.text = ""
-
-
-
 func create_submit_button() -> TextureButton:
 	var button := TextureButton.new()
 	button.texture_normal = load("res://Assets/checkmark.png")
 	button.texture_hover = button.texture_normal
 	button.texture_pressed = button.texture_normal
-
-	#button.expand = true
 	button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 
 	# Convert the texture's alpha into a BitMap for accurate clicking
@@ -122,7 +288,7 @@ func create_submit_button() -> TextureButton:
 	button.texture_click_mask = click_mask
 	var screen_size = get_viewport_rect().size
 
-# Example: center horizontally, place near bottom
+	# Example: center horizontally, place near bottom
 	button.size = Vector2(640, 100)  # adjust manually as needed
 	button.position = Vector2(
 		(screen_size.x - button.size.x) / 2,  # center horizontally
@@ -175,15 +341,11 @@ func create_buttons():
 	var submit_button = create_submit_button()
 	submit_button.name = "SubmitButton"
 	submit_button.pivot_offset = submit_button.size / 2
-
 	$UI.add_child(submit_button)
-
-	var screen_size = get_viewport_rect().size
+	
 	# === Cancel Button ===
 	var cancel_button := create_cancel_button()
 	cancel_button.name = "CancelButton"
-	
-
 	$UI.add_child(cancel_button)
 
 
@@ -219,7 +381,6 @@ func update_score_display():
 
 func animate_score_change():
 	
-	
 	var tween = create_tween()
 	tween.tween_property($UI/ScoreLabel, "scale", Vector2(1.1, 1.1), 0.15).set_trans(Tween.TRANS_SINE)
 	tween.tween_property($UI/ScoreLabel, "scale", Vector2(1, 1), 0.15).set_trans(Tween.TRANS_SINE)
@@ -227,8 +388,7 @@ func animate_score_change():
 	tween.tween_property($UI/ScoreLabel, "modulate", Color(1, 1, 1), 0.1)
 	
 func animate_timer_warning():
-	
-	
+
 	var label = $UI/TimerLabel
 
 	# Only run if it's not already animating
@@ -281,7 +441,7 @@ func show_bonus_popup(kind: String, value: int):
 		"combo":
 			popup.show_text("Combo! x%d" % value, Color.YELLOW)
 		"multiplier":
-			popup.show_text("Multiplier! x%d" % value, Color.ORANGE)
+			popup.show_text("Multiplier! x%d" % value, Color.DARK_ORANGE)
 		_:
 			popup.show_text(kind, Color.WHITE)
 
@@ -289,7 +449,8 @@ func show_bonus_popup(kind: String, value: int):
 	popup.get_tree().create_timer(0.8).timeout.connect(func():
 		if popup in active_popups:
 			active_popups.erase(popup)
-)
+	)
+
 
 
 func _process(delta):
@@ -301,11 +462,7 @@ func _process(delta):
 			timer_running = false
 			stop_timer_warning()
 			game_over()
-
-		$UI/TimerLabel.text = " %d" % ceil(time_left)
-		$UI/ScoreLabel.text = str(displayed_score)
 		
-
 		# Timer warning trigger
 		if time_left <= 10.0:
 			animate_timer_warning()
@@ -334,7 +491,7 @@ func _center_grid():
 	# If you keep a top UI area, center within the remaining space:
 	var top = UI_TOP_RESERVED
 	var remaining_h = max(1.0, screen.y - top)
-	var origin_x = (screen.x - grid_px.x) / 2.0 + (TILE_SIZE / 2)
+	var origin_x = (screen.x - grid_px.x) / 2.0 + (TILE_SIZE / 2.0)
 	var origin_y = top + (remaining_h - grid_px.y) / 2.0
 	grid_node.position = Vector2(origin_x, origin_y)
 
@@ -348,7 +505,8 @@ func generate_grid():
 	for y in range(GRID_SIZE):
 		var row: Array = []
 		for x in range(GRID_SIZE):
-			var letter := _pick_weighted_letter()
+			LETTER_FREQUENCY = _current_letter_counts()
+			var letter := _pick_weighted_letter(LETTER_FREQUENCY)
 			#var pu := _roll_powerup()
 			var tile = tile_scene.instantiate()
 			tile.set_letter(letter, "none")
@@ -382,13 +540,39 @@ func _build_weight_cdf():
 		_cdf.append(_total_weight)
 		_letters.append(ch)
 
-func _pick_weighted_letter() -> String:
-	var r = randf() * _total_weight
-	for i in _cdf.size():
-		if r <= _cdf[i]:
-			return _letters[i]
-	# Fallback (shouldn't hit)
-	return _letters[_letters.size() - 1]
+func _pick_weighted_letter(live_counts: Dictionary) -> String:
+	var total := 0.0
+	var bag := []  # [letter, weight_after_cap]
+
+	for pair in LETTER_WEIGHTS:
+		var L: String = pair[0]
+		var w: float = pair[1]
+		if int(live_counts.get(L, 0)) >= LETTER_CAP:
+			w = 0.0
+		bag.append([L, w])
+		total += w
+
+	# Pathological fallback (should be impossible on 5x5, but safe):
+	if total <= 0.0:
+		bag.clear()
+		total = 0.0
+		for pair in LETTER_WEIGHTS:
+			bag.append([pair[0], float(pair[1])])
+			total += float(pair[1])
+
+	var r := randf() * total
+	for p in bag:
+		r -= p[1]
+		if r <= 0.0:
+			var L: String = String(p[0])  # <-- cast
+			live_counts[L] = int(live_counts.get(L, 0)) + 1
+			return L
+
+	# Last-ditch fallback
+	var L2: String = String(bag.back()[0])  # <-- cast
+	live_counts[L2] = int(live_counts.get(L2, 0)) + 1
+	return L2
+
 
 
 func letter_tapped(tile):
@@ -408,6 +592,7 @@ func load_dictionary():
 	while file.get_position() < file.get_length():
 		var word = file.get_line().strip_edges().to_upper()
 		dictionary[word] = true
+		
 func _unhandled_input(event):
 	if event.is_action_pressed("ui_accept"):
 		check_word()
@@ -419,7 +604,6 @@ func check_word():
 	var word_mult := 0.0
 	var has_bomb := false
 	var has_wild := false
-	var popup_final_mult := 1
 	var base_word_points := 0
 	var bomb_bonus := 0
 
@@ -502,13 +686,13 @@ func check_word():
 		tiles_to_remove = selected_letters.duplicate()
 
 	# Apply combo ONCE
-	var COMBO_BONUS := 0
+	var COMBO_BONUS := 0.0
 	if combo < 10:
 		COMBO_BONUS = (1 + combo * 0.1)
 		points_to_add = int(points_to_add * COMBO_BONUS)
 	else:
 		COMBO_BONUS = 2
-		points_to_add *= COMBO_BONUS
+		points_to_add = int(points_to_add * COMBO_BONUS)
 		
 	if word_mult > 0:
 		points_to_add = int(points_to_add * word_mult)
@@ -522,6 +706,10 @@ func check_word():
 	popup_mult_to_show = int(word_mult)
 	score += points_to_add
 	combo += 1
+	words_found += 1
+	var clean_word := word.replace(".", "")  # strip wildcard placeholders
+	if clean_word.length() > longest_word.length():
+		longest_word = clean_word
 	time_left = min(60.0, time_left + word.length())
 	update_score_display()
 	animate_score_change()
@@ -536,6 +724,10 @@ func check_word():
 		_remove_tiles_dict(all_to_clear_dict)
 	else:
 		remove_selected()
+		
+	# Reset selection + label
+	selected_letters.clear()
+	$UI/CurrentWordLabel.text = ""
 
 	# Popups (show once)
 	if word.length() > 4:
@@ -545,9 +737,7 @@ func check_word():
 	if popup_mult_to_show > 1:
 		show_bonus_popup("multiplier", popup_mult_to_show)
 
-	# Reset selection + label
-	selected_letters.clear()
-	$UI/CurrentWordLabel.text = ""
+	
 
 # Collect all blast tiles from bombs in the selected word
 func _compute_bomb_explosion_tiles(source_tiles: Array) -> Dictionary:
@@ -569,7 +759,6 @@ func _compute_bomb_explosion_tiles(source_tiles: Array) -> Dictionary:
 		var by = b.grid_pos.y
 		to_clear[str(bx, "_", by)] = b
 
-		# 🔁 Use cross/3x3 area instead of fixed 3x3 neighbors
 		var area := _get_bomb_area(bx, by)
 		for pos in area:
 			var x = pos.x
@@ -589,11 +778,6 @@ func _compute_bomb_explosion_tiles(source_tiles: Array) -> Dictionary:
 
 	return to_clear
 
-# Base points per tile destroyed by the bomb (no multipliers here)
-func _bomb_tile_points_base(tile) -> int:
-	var base := 5
-	return base
-
 
 # Sum bomb points only from the explosion dictionary (no multipliers here)
 func _sum_explosion_points(explosion_dict: Dictionary) -> int:
@@ -601,7 +785,7 @@ func _sum_explosion_points(explosion_dict: Dictionary) -> int:
 	for k in explosion_dict.keys():
 		var t = explosion_dict[k]
 		if t != null and is_instance_valid(t):
-			sum += _bomb_tile_points_base(t)
+			sum += 5
 	return sum
 
 
@@ -682,6 +866,8 @@ func _remove_tiles_dict(to_clear: Dictionary) -> void:
 	await get_tree().create_timer(0.25).timeout
 	drop_tiles()
 	refill_tiles()
+	ensure_playable_after_spawn()
+
 
 func _in_bounds(x:int, y:int) -> bool:
 	return x >= 0 and x < GRID_SIZE and y >= 0 and y < GRID_SIZE
@@ -888,11 +1074,13 @@ func _trigger_bomb_chain(source_tiles: Array) -> void:
 		if is_instance_valid(tile):
 			tile.modulate = Color(1, 1, 1)
 	selected_letters.clear()
-
+	$UI/CurrentWordLabel.text = ""
 	# --- 6. Collapse and refill the grid ---
 	await get_tree().create_timer(0.25).timeout
 	drop_tiles()
 	refill_tiles()
+	ensure_playable_after_spawn()
+
 
 func remove_selected():
 	print("Removing selected tiles:", selected_letters.size())
@@ -904,6 +1092,8 @@ func remove_selected():
 	
 	drop_tiles()
 	refill_tiles()
+	ensure_playable_after_spawn()
+
 
 	
 func remove_tile(tile):
@@ -946,14 +1136,13 @@ func drop_tiles():
 
 
 func refill_tiles():
-	var max_y = 0
-	var tiles_to_spawn = []
 
 	# Spawn new tiles
 	for y in range(GRID_SIZE):
 		for x in range(GRID_SIZE):
 			if board[y][x] == null:
-				var letter := _pick_weighted_letter()
+				LETTER_FREQUENCY = _current_letter_counts()
+				var letter := _pick_weighted_letter(LETTER_FREQUENCY)
 				var pu := _roll_powerup()
 				var tile = tile_scene.instantiate()
 				tile.set_letter(letter, pu)
@@ -1006,8 +1195,14 @@ func calculate_word_score(word: String) -> int:
 
 func game_over():
 	timer_running = false
-	$GameOverUI.visible = true
-	$GameOverUI/ColorRect/VBoxContainer/FinalScoreLabel.text = "Score: %d" % (score)
+	var elapsed = 60.0 - time_left
+	$GameOverUI.setup({
+		"score": score,
+		"best": score,  # TODO: replace with persistent best score
+		"words_found": words_found,
+		"longest_word": longest_word if longest_word != "" else "-",
+		"time": elapsed
+	})
 
 
 func _on_restart_button_pressed():
@@ -1019,10 +1214,11 @@ func restart_game():
 	time_left = 60.0
 	timer_running = true
 	combo = 0
+	words_found = 0
+	longest_word = ""
 
 	# Reset UI
 	$UI/ScoreLabel.text = "0"
-	#$UI/ComboLabel.text = "0"
 	$UI/TimerLabel.text = "60"
 	$UI/CurrentWordLabel.text = ""
 	$GameOverUI.visible = false
@@ -1035,6 +1231,8 @@ func restart_game():
 	animate_score_change()
 	clear_grid()
 	generate_grid()
+	ensure_playable_after_spawn()
+
 
 
 func clear_grid():

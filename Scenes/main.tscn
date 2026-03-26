@@ -1,6 +1,7 @@
 [gd_scene load_steps=9 format=3 uid="uid://kcb6r2kwhts8"]
 
 [ext_resource type="Script" uid="uid://d2qjmcorc5wdo" path="res://Scripts/main.gd" id="1_bo1nx"]
+[ext_resource type="PackedScene" uid="uid://daer8kb0rdmji" path="res://Scenes/game_over.tscn" id="2_gameover"]
 [ext_resource type="FontFile" uid="uid://dc22s0q3eshjf" path="res://Assets/Exo2-Bold.ttf" id="2_bo1nx"]
 [ext_resource type="Texture2D" uid="uid://bb7yyucob8c2m" path="res://Assets/bg.png" id="3_8gbba"]
 
@@ -82,42 +83,7 @@ horizontal_alignment = 1
 
 [node name="Grid" type="Node2D" parent="."]
 
-[node name="GameOverUI" type="CanvasLayer" parent="."]
+[node name="GameOverUI" parent="." instance=ExtResource("2_gameover")]
 visible = false
 
-[node name="ColorRect" type="ColorRect" parent="GameOverUI"]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0, 0, 0, 0.27451)
-
-[node name="VBoxContainer" type="VBoxContainer" parent="GameOverUI/ColorRect"]
-layout_mode = 0
-offset_left = 79.0
-offset_top = 276.0
-offset_right = 653.0
-offset_bottom = 733.0
-
-[node name="GameOverLabel" type="Label" parent="GameOverUI/ColorRect/VBoxContainer"]
-layout_mode = 2
-text = "GAME OVER
-"
-label_settings = SubResource("LabelSettings_8gbba")
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="FinalScoreLabel" type="Label" parent="GameOverUI/ColorRect/VBoxContainer"]
-layout_mode = 2
-text = "
- Score: 0
-"
-label_settings = SubResource("LabelSettings_jjvhh")
-horizontal_alignment = 1
-
-[node name="RestartButton" type="Button" parent="GameOverUI/ColorRect/VBoxContainer"]
-layout_mode = 2
-text = "Play Again?"
-
-[connection signal="pressed" from="GameOverUI/ColorRect/VBoxContainer/RestartButton" to="." method="_on_restart_button_pressed"]
+[connection signal="pressed" from="GameOverUI/PanelRoot/Panel/VBox/Buttons/TryAgain" to="." method="_on_restart_button_pressed"]

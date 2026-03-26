@@ -8,7 +8,7 @@ func show_text(text: String, color: Color = Color.WHITE):
 
 	# --- LabelSettings as its own resource we will tween directly ---
 	var style := LabelSettings.new()
-	style.font = preload("res://Assets/Exo2-Bold.ttf")   # import as MSDF in Import tab
+	style.font = preload("res://Assets/Exo2-Bold.ttf")
 	style.font_size = 20
 	style.outline_size = 24
 	style.outline_color = Color(0.1, 0.2, 0.4, 0.55)
