@@ -1,6 +1,7 @@
 extends Control
 
-const MAIN_SCENE := "res://Scenes/main.tscn"
+const MAIN_SCENE  := "res://Scenes/main.tscn"
+const DAILY_SCENE := "res://Scenes/daily.tscn"
 
 @onready var play_button := $VBox/PlayButton
 @onready var title_label := $VBox/TitleLabel
@@ -21,9 +22,15 @@ func _ready():
 	tween.tween_property(play_button, "modulate:a", 1.0, 0.3).set_trans(Tween.TRANS_SINE)
 
 func _on_play_pressed():
-	# Quick fade out then switch scene
 	var tween := create_tween()
 	tween.tween_property(self, "modulate:a", 0.0, 0.3).set_trans(Tween.TRANS_SINE)
 	tween.tween_callback(func():
 		get_tree().change_scene_to_file(MAIN_SCENE)
+	)
+
+func _on_daily_pressed():
+	var tween := create_tween()
+	tween.tween_property(self, "modulate:a", 0.0, 0.3).set_trans(Tween.TRANS_SINE)
+	tween.tween_callback(func():
+		get_tree().change_scene_to_file(DAILY_SCENE)
 	)

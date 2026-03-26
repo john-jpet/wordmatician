@@ -102,6 +102,14 @@ func _ready():
 	create_buttons()
 	$UI/CurrentWordLabel.text = ""
 
+	# Block input during the intro animation
+	# Longest tile delay: col 4 * 0.06 + row 4 * 0.03 + 0.45s animation = 0.69s
+	timer_running = false
+	set_process_input(false)
+	await get_tree().create_timer(0.75).timeout
+	set_process_input(true)
+	timer_running = true
+
 # Take a fast snapshot of board multiplicities + wildcards + bitmask
 func _board_counts_mask_wild() -> Dictionary:
 	var have := PackedInt32Array(); have.resize(26)
@@ -507,19 +515,31 @@ func generate_grid():
 		for x in range(GRID_SIZE):
 			LETTER_FREQUENCY = _current_letter_counts()
 			var letter := _pick_weighted_letter(LETTER_FREQUENCY)
-			#var pu := _roll_powerup()
 			var tile = tile_scene.instantiate()
 			tile.set_letter(letter, "none")
 
 			tile.grid_pos = Vector2i(x, y)
 
-			# Position relative to the Grid node (which we center)
-			var local_x = x * (TILE_SIZE + TILE_GAP)
-			var local_y = y * (TILE_SIZE + TILE_GAP)
-			tile.position = Vector2(local_x, local_y)
+			var target_pos = Vector2(
+				x * (TILE_SIZE + TILE_GAP),
+				y * (TILE_SIZE + TILE_GAP)
+			)
 
+			# Start tiles above the screen
+			tile.position = Vector2(target_pos.x, -TILE_SIZE * (GRID_SIZE + 1))
+			tile.modulate.a = 0.0
 			grid_node.add_child(tile)
 			row.append(tile)
+
+			# Stagger delay: column-first so tiles fall in waves left to right
+			var delay := (x * 0.06) + (y * 0.03)
+
+			var tween := create_tween()
+			tween.tween_interval(delay)
+			tween.tween_property(tile, "modulate:a", 1.0, 0.05)
+			tween.parallel().tween_property(tile, "position", target_pos, 0.45)\
+				.set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+
 		board.append(row)
 
 # ---------- Weighted letter picker ----------

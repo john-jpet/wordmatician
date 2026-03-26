@@ -1,14 +1,13 @@
-[gd_scene load_steps=6 format=3 uid="uid://intro_scene"]
+[gd_scene load_steps=7 format=3 uid="uid://d3cn01k0n12vs"]
 
-[ext_resource type="Script" path="res://Scripts/intro.gd" id="1_intro"]
-[ext_resource type="Texture2D" path="res://Assets/bg.png" id="2_bg"]
-[ext_resource type="FontFile" path="res://Assets/Exo2-Bold.ttf" id="3_font"]
-[ext_resource type="FontFile" path="res://Assets/Exo2-Regular.ttf" id="4_fontregular"]
+[ext_resource type="Script" uid="uid://dxnft00q8bdpl" path="res://Scripts/intro.gd" id="1_intro"]
+[ext_resource type="Texture2D" uid="uid://bb7yyucob8c2m" path="res://Assets/bg.png" id="2_bg"]
+[ext_resource type="FontFile" uid="uid://dc22s0q3eshjf" path="res://Assets/Exo2-Bold.ttf" id="3_font"]
+[ext_resource type="FontFile" uid="uid://6lcepanjvpbq" path="res://Assets/Exo2-Regular.ttf" id="4_fontregular"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_title"]
 font = ExtResource("3_font")
 font_size = 96
-font_color = Color(1, 1, 1, 1)
 outline_size = 8
 outline_color = Color(0.1, 0.15, 0.3, 0.8)
 shadow_color = Color(0, 0, 0, 0.4)
@@ -65,13 +64,20 @@ label_settings = SubResource("LabelSettings_subtitle")
 horizontal_alignment = 1
 
 [node name="Spacer" type="Control" parent="VBox"]
-layout_mode = 2
 custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
 
 [node name="PlayButton" type="Button" parent="VBox"]
+custom_minimum_size = Vector2(240, 72)
 layout_mode = 2
 size_flags_horizontal = 4
-custom_minimum_size = Vector2(240, 72)
 text = "PLAY"
 
+[node name="DailyButton" type="Button" parent="VBox"]
+custom_minimum_size = Vector2(240, 72)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "DAILY PUZZLE 📅"
+
 [connection signal="pressed" from="VBox/PlayButton" to="." method="_on_play_pressed"]
+[connection signal="pressed" from="VBox/DailyButton" to="." method="_on_daily_pressed"]
