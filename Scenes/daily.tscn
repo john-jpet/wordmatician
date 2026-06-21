@@ -45,36 +45,20 @@ metadata/_edit_use_anchors_ = true
 
 [node name="CurrentWordLabel" type="Label" parent="UI"]
 layout_mode = 0
-offset_top = 60.0
+offset_top = 135.0
 offset_right = 729.0
-offset_bottom = 140.0
+offset_bottom = 296.0
 label_settings = SubResource("LabelSettings_word")
 horizontal_alignment = 1
 
 [node name="StatusLabel" type="Label" parent="UI"]
 layout_mode = 0
-offset_top = 10.0
+offset_top = 30.0
 offset_right = 729.0
-offset_bottom = 60.0
-text = "Daily Puzzle — clear the board!"
+offset_bottom = 80.0
+text = "Daily Puzzle"
 label_settings = SubResource("LabelSettings_status")
 horizontal_alignment = 1
-
-[node name="SubmitButton" type="Button" parent="UI"]
-layout_mode = 0
-offset_left = 179.0
-offset_top = 1066.0
-offset_right = 359.0
-offset_bottom = 1146.0
-text = "SUBMIT"
-
-[node name="CancelButton" type="Button" parent="UI"]
-layout_mode = 0
-offset_left = 369.0
-offset_top = 1066.0
-offset_right = 549.0
-offset_bottom = 1146.0
-text = "CANCEL"
 
 [node name="RestartButton" type="Button" parent="UI"]
 layout_mode = 0
@@ -83,14 +67,6 @@ offset_top = 1156.0
 offset_right = 469.0
 offset_bottom = 1206.0
 text = "Restart Puzzle"
-
-[node name="ExitButton" type="Button" parent="UI"]
-layout_mode = 0
-offset_left = 289.0
-offset_top = 1216.0
-offset_right = 439.0
-offset_bottom = 1266.0
-text = "← Menu"
 
 [node name="WinPanel" type="ColorRect" parent="UI"]
 visible = false
@@ -119,13 +95,9 @@ alignment = 1
 
 [node name="WinLabel" type="Label" parent="UI/WinPanel/VBox"]
 layout_mode = 2
-text = "Board Cleared! 🎉"
+text = "Board Cleared!"
 label_settings = SubResource("LabelSettings_title")
 horizontal_alignment = 1
-
-[node name="WinExit" type="Button" parent="UI/WinPanel/VBox"]
-layout_mode = 2
-text = "Back to Menu"
 
 [node name="ComeBackPanel" type="ColorRect" parent="UI"]
 visible = false
@@ -148,18 +120,9 @@ alignment = 1
 [node name="ComeBackLabel" type="Label" parent="UI/ComeBackPanel/VBox"]
 layout_mode = 2
 text = "Already completed today!
-Come back tomorrow 🗓️"
+Come back tomorrow."
 label_settings = SubResource("LabelSettings_status")
 horizontal_alignment = 1
 autowrap_mode = 3
 
-[node name="BackButton" type="Button" parent="UI/ComeBackPanel/VBox"]
-layout_mode = 2
-text = "← Menu"
-
-[connection signal="pressed" from="UI/SubmitButton" to="." method="_on_submit_pressed"]
-[connection signal="pressed" from="UI/CancelButton" to="." method="_on_cancel_pressed"]
 [connection signal="pressed" from="UI/RestartButton" to="." method="_on_restart_pressed"]
-[connection signal="pressed" from="UI/ExitButton" to="." method="_on_exit_pressed"]
-[connection signal="pressed" from="UI/WinPanel/VBox/WinExit" to="." method="_on_exit_pressed"]
-[connection signal="pressed" from="UI/ComeBackPanel/VBox/BackButton" to="." method="_on_back_pressed"]

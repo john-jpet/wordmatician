@@ -24,8 +24,43 @@ var rng := RandomNumberGenerator.new()
 
 # ── Entry point ──────────────────────────────────────────────────────────────
 
+func _style_button(btn: Button, accent := false) -> void:
+	var base_col := Color(0.18, 0.32, 0.68, 0.95) if accent else Color(0.12, 0.20, 0.48, 0.92)
+	var style := StyleBoxFlat.new()
+	style.bg_color                   = base_col
+	style.corner_radius_top_left     = 22
+	style.corner_radius_top_right    = 22
+	style.corner_radius_bottom_left  = 22
+	style.corner_radius_bottom_right = 22
+	style.shadow_size                = 10
+	style.shadow_color               = Color(0, 0, 0, 0.4)
+	style.content_margin_left        = 24
+	style.content_margin_right       = 24
+	style.content_margin_top         = 12
+	style.content_margin_bottom      = 12
+	btn.add_theme_stylebox_override("normal", style)
+	var sh := style.duplicate() as StyleBoxFlat
+	sh.bg_color = base_col.lightened(0.12)
+	btn.add_theme_stylebox_override("hover", sh)
+	var sp := style.duplicate() as StyleBoxFlat
+	sp.bg_color = base_col.darkened(0.12)
+	btn.add_theme_stylebox_override("pressed", sp)
+	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	btn.add_theme_font_override("font", load("res://Assets/Exo2-Bold.ttf"))
+	btn.add_theme_font_size_override("font_size", 40)
+	btn.add_theme_color_override("font_color",         Color(1, 1, 1))
+	btn.add_theme_color_override("font_hover_color",   Color(1, 1, 1))
+	btn.add_theme_color_override("font_pressed_color", Color(0.85, 0.92, 1))
+
 func _ready():
 	load_dictionary()
+	_add_home_button()
+	_add_submit_button()
+	_add_cancel_button()
+	_style_button($UI/RestartButton, false)
+	await get_tree().process_frame
+	var rb := $UI/RestartButton
+	rb.position.x = (get_viewport_rect().size.x - rb.size.x) / 2.0
 	if _already_completed_today():
 		_show_come_back_tomorrow()
 		return
@@ -34,6 +69,81 @@ func _ready():
 	_center_grid()
 	_spawn_grid(daily_letters.duplicate())
 	_block_input_briefly()
+
+func _add_submit_button() -> void:
+	var button := TextureButton.new()
+	button.name = "SubmitButton"
+	button.texture_normal = load("res://Assets/checkmark.png")
+	button.texture_hover  = button.texture_normal
+	button.texture_pressed = button.texture_normal
+	button.stretch_mode   = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	var img := button.texture_normal.get_image()
+	var mask := BitMap.new()
+	mask.create_from_image_alpha(img)
+	button.texture_click_mask = mask
+	var screen := get_viewport_rect().size
+	button.size     = Vector2(640, 100)
+	button.position = Vector2((screen.x - button.size.x) / 2, screen.y - button.size.y - 150)
+	button.pivot_offset = button.size / 2
+	button.pressed.connect(_on_submit_pressed)
+	$UI.add_child(button)
+
+func _add_cancel_button() -> void:
+	var button := TextureButton.new()
+	button.name = "CancelButton"
+	button.texture_normal  = load("res://Assets/cancelbutton.png")
+	button.texture_hover   = button.texture_normal
+	button.texture_pressed = button.texture_normal
+	button.stretch_mode    = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	var img := button.texture_normal.get_image()
+	var mask := BitMap.new()
+	mask.create_from_image_alpha(img)
+	button.texture_click_mask = mask
+	var screen := get_viewport_rect().size
+	button.size = Vector2(128, 128)
+	var margin := 32
+	button.position = Vector2(screen.x - button.size.x - margin, screen.y - button.size.y - margin - 70)
+	button.pivot_offset = button.size / 2
+	button.pressed.connect(_on_cancel_pressed)
+	$UI.add_child(button)
+
+func _add_home_button() -> void:
+	var button := Button.new()
+	button.text = "⌂"
+	button.flat = true
+	button.custom_minimum_size = Vector2(88, 88)
+	button.size = Vector2(88, 88)
+	button.pivot_offset = Vector2(44, 44)
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.08, 0.12, 0.25, 0.85)
+	style.corner_radius_top_left     = 20
+	style.corner_radius_top_right    = 20
+	style.corner_radius_bottom_left  = 20
+	style.corner_radius_bottom_right = 20
+	style.shadow_size  = 8
+	style.shadow_color = Color(0, 0, 0, 0.4)
+	button.add_theme_stylebox_override("normal", style)
+
+	var style_hover := style.duplicate() as StyleBoxFlat
+	style_hover.bg_color = style.bg_color.lightened(0.12)
+	button.add_theme_stylebox_override("hover", style_hover)
+
+	var style_pressed := style.duplicate() as StyleBoxFlat
+	style_pressed.bg_color = style.bg_color.darkened(0.1)
+	button.add_theme_stylebox_override("pressed", style_pressed)
+
+	button.add_theme_font_override("font", load("res://Assets/Exo2-Bold.ttf"))
+	button.add_theme_font_size_override("font_size", 48)
+	button.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	button.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 1.0))
+
+	var screen := get_viewport_rect().size
+	button.position = Vector2(screen.x - button.size.x - 16, 16)
+	button.z_index = 10
+
+	button.pressed.connect(_on_home_pressed)
+	$UI.add_child(button)
 
 # ── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -102,6 +212,7 @@ func _generate_daily_letters(seed_val: int) -> Array:
 		for i in w.length():
 			letters.append(w[i])
 	_shuffle_array(letters, rng)
+	print("[Daily] Seed: %d | Words chosen: %s | Total letters: %d" % [seed_val, str(chosen), letters.size()])
 	return letters
 
 func _shuffle_array(arr: Array, r: RandomNumberGenerator) -> void:
@@ -200,17 +311,22 @@ func _check_word():
 		return
 
 	# Valid — remove tiles permanently, no refill
+	input_blocked = true
 	for t in selected_letters:
 		if is_instance_valid(t):
 			board[t.grid_pos.y][t.grid_pos.x] = null
+			tiles_remaining -= 1
 			var tw := create_tween()
 			tw.tween_property(t, "scale", Vector2(1.4, 1.4), 0.1)
 			tw.tween_property(t, "modulate:a", 0.0, 0.2)
 			tw.tween_callback(func(): if is_instance_valid(t): t.queue_free())
-		tiles_remaining -= 1
 
 	selected_letters.clear()
 	current_word_label.text = ""
+
+	await get_tree().create_timer(0.25).timeout
+	_drop_tiles()
+	input_blocked = false
 
 	if tiles_remaining <= 0:
 		_on_puzzle_cleared()
@@ -233,8 +349,10 @@ func _invalid_feedback():
 
 func _on_puzzle_cleared():
 	_save_completion()
+	StatsManager.record_daily_clear()
 	input_blocked = true
 	$UI/WinPanel.visible = true
+	$UI/RestartButton.visible = false
 
 func _on_restart_pressed():
 	# Reshuffle the same letters for today
@@ -245,14 +363,40 @@ func _on_restart_pressed():
 	_spawn_grid(reshuffled)
 	_block_input_briefly()
 
-func _on_exit_pressed():
-	get_tree().change_scene_to_file(INTRO_SCENE)
+func _on_home_pressed():
+	LoadingScreen.go_to(INTRO_SCENE)
 
 func _show_come_back_tomorrow():
 	$UI/ComeBackPanel.visible = true
+	$UI/RestartButton.visible = false
+	$UI/SubmitButton.visible = false
+	$UI/CancelButton.visible = false
 
-func _on_back_pressed():
-	get_tree().change_scene_to_file(INTRO_SCENE)
+# ── Drop tiles ───────────────────────────────────────────────────────────────
+
+func _drop_tiles():
+	for x in range(GRID_SIZE):
+		var empty_y := GRID_SIZE - 1
+		for y in range(GRID_SIZE - 1, -1, -1):
+			if board[y][x] != null:
+				if y != empty_y:
+					var tile = board[y][x]
+					board[empty_y][x] = tile
+					board[y][x] = null
+					tile.grid_pos = Vector2i(x, empty_y)
+
+					var target_pos := Vector2(
+						x * (TILE_SIZE + TILE_GAP),
+						empty_y * (TILE_SIZE + TILE_GAP)
+					)
+					var tw := create_tween()
+					tw.tween_property(tile, "position", target_pos, 0.2)\
+						.set_trans(Tween.TRANS_LINEAR)
+					var squash := create_tween()
+					squash.tween_interval(0.2)
+					squash.tween_property(tile, "scale", Vector2(1.1, 0.9), 0.05)
+					squash.tween_property(tile, "scale", Vector2(1.0, 1.0), 0.05)
+				empty_y -= 1
 
 # ── Dictionary ────────────────────────────────────────────────────────────────
 

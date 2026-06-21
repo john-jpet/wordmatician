@@ -59,7 +59,7 @@ horizontal_alignment = 1
 [node name="SubtitleLabel" type="Label" parent="VBox"]
 layout_mode = 2
 size_flags_horizontal = 4
-text = "make words. beat the clock."
+text = "Put your vocabulary to the test!"
 label_settings = SubResource("LabelSettings_subtitle")
 horizontal_alignment = 1
 
@@ -77,7 +77,7 @@ text = "PLAY"
 custom_minimum_size = Vector2(240, 72)
 layout_mode = 2
 size_flags_horizontal = 4
-text = "DAILY PUZZLE 📅"
+text = "DAILY PUZZLE"
 
 [connection signal="pressed" from="VBox/PlayButton" to="." method="_on_play_pressed"]
 [connection signal="pressed" from="VBox/DailyButton" to="." method="_on_daily_pressed"]

@@ -57,6 +57,7 @@ var _letters: PackedStringArray = []
 var _total_weight := 0.0
 
 var time_left: float = 60.0  # start with 60 seconds
+var elapsed_time: float = 0.0
 var timer_running: bool = true
 
 # --- Bomb tuning knobs ---
@@ -344,18 +345,66 @@ func create_cancel_button() -> TextureButton:
 
 	return button
 
+func create_home_button() -> Button:
+	var button := Button.new()
+	button.text = "⌂"
+	button.flat = true
+	button.custom_minimum_size = Vector2(88, 88)
+	button.size = Vector2(88, 88)
+	button.pivot_offset = Vector2(44, 44)
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.08, 0.12, 0.25, 0.85)
+	style.corner_radius_top_left     = 20
+	style.corner_radius_top_right    = 20
+	style.corner_radius_bottom_left  = 20
+	style.corner_radius_bottom_right = 20
+	style.shadow_size  = 8
+	style.shadow_color = Color(0, 0, 0, 0.4)
+	button.add_theme_stylebox_override("normal", style)
+
+	var style_hover := style.duplicate() as StyleBoxFlat
+	style_hover.bg_color = style.bg_color.lightened(0.12)
+	button.add_theme_stylebox_override("hover", style_hover)
+
+	var style_pressed := style.duplicate() as StyleBoxFlat
+	style_pressed.bg_color = style.bg_color.darkened(0.1)
+	button.add_theme_stylebox_override("pressed", style_pressed)
+
+	button.add_theme_font_override("font", load("res://Assets/Exo2-Bold.ttf"))
+	button.add_theme_font_size_override("font_size", 48)
+	button.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	button.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 1.0))
+
+	# Top-left, below status bar area
+	var screen := get_viewport_rect().size
+	button.position = Vector2(screen.x - button.size.x - 16, 16)
+
+	button.pressed.connect(_on_home_pressed)
+	return button
+
 func create_buttons():
 	# === Submit Button ===
 	var submit_button = create_submit_button()
 	submit_button.name = "SubmitButton"
 	submit_button.pivot_offset = submit_button.size / 2
 	$UI.add_child(submit_button)
-	
+
 	# === Cancel Button ===
 	var cancel_button := create_cancel_button()
 	cancel_button.name = "CancelButton"
 	$UI.add_child(cancel_button)
 
+	# === Home Button ===
+	var home_button := create_home_button()
+	home_button.name = "HomeButton"
+	$UI.add_child(home_button)
+
+
+const INTRO_SCENE := "res://Scenes/intro.tscn"
+
+func _on_home_pressed():
+	LoadingScreen.go_to(INTRO_SCENE)
 
 func _on_submit_pressed():
 	var tween = get_tree().create_tween()
@@ -464,6 +513,7 @@ func show_bonus_popup(kind: String, value: int):
 func _process(delta):
 	global_time += delta
 	if timer_running:
+		elapsed_time += delta
 		time_left -= delta
 		if time_left <= 0:
 			time_left = 0
@@ -644,6 +694,7 @@ func check_word():
 			has_bomb = true
 
 	var valid := false
+	var resolved_word := word  # actual dictionary word (wildcards replaced)
 	if word.length() > 2:
 		if has_wild:
 			var re := RegEx.new()
@@ -651,9 +702,11 @@ func check_word():
 			for key in dictionary.keys():
 				if key.length() == word.length() and re.search(key):
 					valid = true
+					resolved_word = key
 					break
 		else:
 			valid = dictionary.has(word)
+			resolved_word = word
 
 	if not valid:
 		for tile in selected_letters:
@@ -727,9 +780,8 @@ func check_word():
 	score += points_to_add
 	combo += 1
 	words_found += 1
-	var clean_word := word.replace(".", "")  # strip wildcard placeholders
-	if clean_word.length() > longest_word.length():
-		longest_word = clean_word
+	if resolved_word.length() > longest_word.length():
+		longest_word = resolved_word
 	time_left = min(60.0, time_left + word.length())
 	update_score_display()
 	animate_score_change()
@@ -1215,10 +1267,11 @@ func calculate_word_score(word: String) -> int:
 
 func game_over():
 	timer_running = false
-	var elapsed = 60.0 - time_left
+	StatsManager.record_game(score, words_found, longest_word)
+	var elapsed = elapsed_time
 	$GameOverUI.setup({
 		"score": score,
-		"best": score,  # TODO: replace with persistent best score
+		"best": StatsManager.data["high_score"],
 		"words_found": words_found,
 		"longest_word": longest_word if longest_word != "" else "-",
 		"time": elapsed
@@ -1232,6 +1285,7 @@ func restart_game():
 	# Reset game variables
 	score = 0
 	time_left = 60.0
+	elapsed_time = 0.0
 	timer_running = true
 	combo = 0
 	words_found = 0
