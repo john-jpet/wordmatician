@@ -18,6 +18,10 @@
 .DS_Store
 Thumbs.db
 
+# Android keystores (never commit — losing these locks you out of app updates)
+*.keystore
+*.jks
+
 # Ignore build outputs
 Builds/
 *.exe

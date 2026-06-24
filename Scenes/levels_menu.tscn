@@ -1,0 +1,18 @@
+[gd_scene load_steps=3 format=3 uid="uid://bvkq3lmenu00"]
+
+[ext_resource type="Script" path="res://Scripts/levels_menu.gd" id="1_menu"]
+[ext_resource type="Texture2D" uid="uid://bb7yyucob8c2m" path="res://Assets/bg.png" id="2_bg"]
+
+[node name="LevelsMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_menu")
+
+[node name="Bg" type="Sprite2D" parent="."]
+position = Vector2(364.5, 640)
+scale = Vector2(0.79, 0.92)
+texture = ExtResource("2_bg")

@@ -19,6 +19,8 @@ config/icon="res://icon.svg"
 
 LoadingScreen="*res://Scripts/loading_screen.gd"
 StatsManager="*res://Scripts/stats_manager.gd"
+LevelsData="*res://Scripts/levels_data.gd"
+LevelsManager="*res://Scripts/levels_manager.gd"
 
 [display]
 
@@ -27,4 +29,9 @@ window/size/viewport_height=1280
 window/size/window_width_override=360
 window/size/window_height_override=640
 window/stretch/mode="viewport"
+window/handheld/orientation=1
 window/canvas_textures/default_texture_filter=1
+
+[rendering]
+
+textures/vram_compression/import_etc2_astc=true

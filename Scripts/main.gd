@@ -158,12 +158,14 @@ func board_has_playable_word():
 
 
 var _dict_precomp: Array = []  # entries: {word:String, len:int, need:PackedInt32Array}
+var _dict_by_length: Dictionary = {}  # int -> Array[String], for fast wildcard lookup
 
 func _build_word_counts():
 	_dict_precomp.clear()
+	_dict_by_length.clear()
 	for w in dictionary.keys():
 		var u := String(w).to_upper()
-		if u.length() < 3:   # ignore tiny words if your min length is 3
+		if u.length() < 3:
 			continue
 		var need := PackedInt32Array()
 		need.resize(26)
@@ -173,7 +175,10 @@ func _build_word_counts():
 			if idx >= 0:
 				need[idx] += 1
 		_dict_precomp.append({"word": u, "len": u.length(), "need": need})
-	# Optional: shortest first so we early-exit faster
+		# Group by length for O(1) wildcard candidate lookup
+		if not _dict_by_length.has(u.length()):
+			_dict_by_length[u.length()] = []
+		_dict_by_length[u.length()].append(u)
 	_dict_precomp.sort_custom(func(a, b): return a.len < b.len)
 	
 func _current_letter_counts() -> Dictionary:
@@ -662,6 +667,15 @@ func load_dictionary():
 	while file.get_position() < file.get_length():
 		var word = file.get_line().strip_edges().to_upper()
 		dictionary[word] = true
+
+# Simple wildcard match: '.' matches any letter. No regex overhead.
+func _wild_matches(pattern: String, candidate: String) -> bool:
+	if pattern.length() != candidate.length():
+		return false
+	for i in pattern.length():
+		if pattern[i] != "." and pattern[i] != candidate[i]:
+			return false
+	return true
 		
 func _unhandled_input(event):
 	if event.is_action_pressed("ui_accept"):
@@ -697,10 +711,9 @@ func check_word():
 	var resolved_word := word  # actual dictionary word (wildcards replaced)
 	if word.length() > 2:
 		if has_wild:
-			var re := RegEx.new()
-			re.compile("^" + word + "$")
-			for key in dictionary.keys():
-				if key.length() == word.length() and re.search(key):
+			var candidates: Array = _dict_by_length.get(word.length(), [])
+			for key in candidates:
+				if _wild_matches(word, key):
 					valid = true
 					resolved_word = key
 					break
@@ -938,7 +951,7 @@ func _remove_tiles_dict(to_clear: Dictionary) -> void:
 	await get_tree().create_timer(0.25).timeout
 	drop_tiles()
 	refill_tiles()
-	ensure_playable_after_spawn()
+	ensure_playable_after_spawn.call_deferred()
 
 
 func _in_bounds(x:int, y:int) -> bool:
@@ -1151,7 +1164,7 @@ func _trigger_bomb_chain(source_tiles: Array) -> void:
 	await get_tree().create_timer(0.25).timeout
 	drop_tiles()
 	refill_tiles()
-	ensure_playable_after_spawn()
+	ensure_playable_after_spawn.call_deferred()
 
 
 func remove_selected():
@@ -1164,10 +1177,9 @@ func remove_selected():
 	
 	drop_tiles()
 	refill_tiles()
-	ensure_playable_after_spawn()
+	ensure_playable_after_spawn.call_deferred()
 
 
-	
 func remove_tile(tile):
 	var offset = Vector2(randf_range(-20,20), randf_range(-20,20))
 	var tween = create_tween()

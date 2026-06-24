@@ -59,6 +59,15 @@ func _ready():
 
 	_build_stats_panel()
 
+	var levels_btn := Button.new()
+	levels_btn.text = "LEVELS"
+	levels_btn.custom_minimum_size   = Vector2(340, 90)
+	levels_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	levels_btn.modulate.a = 0.0
+	levels_btn.pressed.connect(func(): LoadingScreen.go_to("res://Scenes/levels_menu.tscn"))
+	_style_button(levels_btn, false)
+	$VBox.add_child(levels_btn)
+
 	var stats_btn := Button.new()
 	stats_btn.text = "STATS"
 	stats_btn.custom_minimum_size   = Vector2(340, 90)
@@ -73,6 +82,7 @@ func _ready():
 	tween.tween_property(subtitle_label, "modulate:a", 1.0, 0.3).set_trans(Tween.TRANS_SINE)
 	tween.tween_property(play_button,    "modulate:a", 1.0, 0.3).set_trans(Tween.TRANS_SINE)
 	tween.tween_property(daily_button,   "modulate:a", 1.0, 0.3).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(levels_btn,     "modulate:a", 1.0, 0.3).set_trans(Tween.TRANS_SINE)
 	tween.tween_property(stats_btn,      "modulate:a", 1.0, 0.3).set_trans(Tween.TRANS_SINE)
 
 
@@ -96,11 +106,11 @@ func _build_stats_panel() -> void:
 	var card := ColorRect.new()
 	card.color = Color(0.08, 0.12, 0.25, 0.97)
 	card.set_anchors_preset(Control.PRESET_CENTER)
-	card.custom_minimum_size = Vector2(580, 680)
+	card.custom_minimum_size = Vector2(580, 780)
 	card.offset_left   = -290
 	card.offset_right  =  290
-	card.offset_top    = -340
-	card.offset_bottom =  340
+	card.offset_top    = -390
+	card.offset_bottom =  390
 	_stats_panel.add_child(card)
 
 	# Title inside card
@@ -138,6 +148,7 @@ func _build_stats_panel() -> void:
 		["Total Words Found",  str(StatsManager.data["total_words"])],
 		["Longest Word",       _longest_display()],
 		["Daily Puzzles",      str(StatsManager.data["daily_cleared"])],
+		["Levels Cleared",     str(LevelsManager.completed.size()) + " / " + str(LevelsData.LEVELS.size())],
 	]
 
 	var row_font_bold    = load("res://Assets/Exo2-Bold.ttf")
