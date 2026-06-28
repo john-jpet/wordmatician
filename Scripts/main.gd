@@ -458,6 +458,7 @@ func animate_timer_warning():
 		return
 
 	label.set_meta("warning_active", true)
+	AudioManager.play_loop("clock_tick")
 
 	var tween = create_tween()
 	tween.set_loops()  # Loop indefinitely until we stop it
@@ -478,6 +479,7 @@ func stop_timer_warning():
 	label.modulate = Color(1, 1, 1)
 	label.scale = Vector2(1, 1)
 	label.set_meta("warning_active", false)
+	AudioManager.stop("clock_tick")
 
 
 func show_bonus_popup(kind: String, value: int):
@@ -525,9 +527,7 @@ func _process(delta):
 			timer_running = false
 			stop_timer_warning()
 			game_over()
-		
-		# Timer warning trigger
-		if time_left <= 10.0:
+		elif time_left <= 10.0:
 			animate_timer_warning()
 		else:
 			stop_timer_warning()
@@ -661,6 +661,7 @@ func letter_tapped(tile):
 		selected_letters.append(tile)
 		update_current_word_display()
 		tile.modulate = Color(0.7, 0.7, 1)  # Highlight
+		AudioManager.play("select")
 
 func load_dictionary():
 	var file = FileAccess.open("res://Assets/words.txt", FileAccess.READ)
@@ -725,6 +726,7 @@ func check_word():
 		for tile in selected_letters:
 			tile.modulate = Color(1, 1, 1)
 		invalid_word_feedback(selected_letters)
+		AudioManager.play("mistake")
 		combo = 0
 		selected_letters.clear()
 		$UI/CurrentWordLabel.text = ""
@@ -792,6 +794,7 @@ func check_word():
 	popup_mult_to_show = int(word_mult)
 	score += points_to_add
 	combo += 1
+	AudioManager.play("word_found")
 	words_found += 1
 	if resolved_word.length() > longest_word.length():
 		longest_word = resolved_word
@@ -914,6 +917,7 @@ func _overall_multiplier(selected_tiles: Array, explosion_dict: Dictionary) -> f
 	return mult
 
 func _remove_tiles_dict(to_clear: Dictionary) -> void:
+	AudioManager.play("bomb")
 	# --- quick visual flash ---
 	var flash = ColorRect.new()
 	flash.color = Color(1, 0.8, 0.2, 0.35)  # warm orange glow
@@ -1279,6 +1283,8 @@ func calculate_word_score(word: String) -> int:
 
 func game_over():
 	timer_running = false
+	AudioManager.stop("clock_tick")
+	AudioManager.play("fanfare")
 	StatsManager.record_game(score, words_found, longest_word)
 	var elapsed = elapsed_time
 	$GameOverUI.setup({
@@ -1291,9 +1297,11 @@ func game_over():
 
 
 func _on_restart_button_pressed():
-	restart_game() # Replace with function body.
+	AudioManager.play("select")
+	restart_game()
 	
 func restart_game():
+	AudioManager.stop("clock_tick")
 	# Reset game variables
 	score = 0
 	time_left = 60.0

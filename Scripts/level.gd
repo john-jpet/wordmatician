@@ -131,6 +131,7 @@ func letter_tapped(tile) -> void:
 	else:
 		selected_letters.append(tile)
 		tile.modulate = Color(0.7, 0.7, 1)
+		AudioManager.play("select")
 	_update_word_label()
 
 func _update_word_label() -> void:
@@ -169,6 +170,7 @@ func _check_word() -> void:
 		intended_words_set.erase(word)  # each intended word only counts once
 	else:
 		non_intended_count += 1
+		AudioManager.play("word_found")
 
 	input_blocked = true
 	var tiles_to_remove := selected_letters.duplicate()
@@ -199,6 +201,7 @@ func _remove_tiles_normal(tiles: Array) -> void:
 			tw.tween_callback(func(): if is_instance_valid(t): t.queue_free())
 
 func _remove_tiles_intended(tiles: Array) -> void:
+	AudioManager.play("feature_word")
 	# Green flash animation
 	for t in tiles:
 		if is_instance_valid(t):
@@ -211,6 +214,7 @@ func _remove_tiles_intended(tiles: Array) -> void:
 	_show_theme_word_popup()
 
 func _invalid_feedback() -> void:
+	AudioManager.play("mistake")
 	for t in selected_letters:
 		var tw   := create_tween()
 		var orig := Vector2(t.position)
@@ -319,6 +323,7 @@ func _on_hint_pressed() -> void:
 func _on_level_complete() -> void:
 	var idx      := LevelsManager.current_level_idx
 	var earned_star := non_intended_count == 0
+	AudioManager.play("fanfare")
 
 	if earned_star:
 		LevelsManager.record_star(idx)
@@ -396,19 +401,20 @@ func _on_level_complete() -> void:
 	# Buttons
 	if not earned_star:
 		var replay_btn := _make_overlay_button("PLAY AGAIN", false)
-		replay_btn.pressed.connect(func(): _restart_level())
+		replay_btn.pressed.connect(func(): AudioManager.play("select"); _restart_level())
 		vbox.add_child(replay_btn)
 
 	if idx + 1 < LevelsData.LEVELS.size():
 		var next_btn := _make_overlay_button("NEXT LEVEL", true)
 		next_btn.pressed.connect(func():
+			AudioManager.play("select")
 			LevelsManager.current_level_idx = idx + 1
 			LoadingScreen.go_to(LEVEL_SCENE)
 		)
 		vbox.add_child(next_btn)
 
 	var menu_btn := _make_overlay_button("LEVELS MENU", false)
-	menu_btn.pressed.connect(func(): LoadingScreen.go_to(LEVELS_MENU_SCENE))
+	menu_btn.pressed.connect(func(): AudioManager.play("select"); LoadingScreen.go_to(LEVELS_MENU_SCENE))
 	vbox.add_child(menu_btn)
 
 	card.modulate.a = 0.0
@@ -476,6 +482,7 @@ func _restart_level() -> void:
 	_block_input_briefly()
 
 func _on_restart_pressed() -> void:
+	AudioManager.play("select")
 	_restart_level()
 
 # ── Buttons ───────────────────────────────────────────────────────────────────
@@ -624,7 +631,7 @@ func _add_home_button() -> void:
 	button.position = Vector2(screen.x - button.size.x - 16, 16)
 	button.z_index  = 10
 
-	button.pressed.connect(func(): LoadingScreen.go_to(INTRO_SCENE))
+	button.pressed.connect(func(): AudioManager.play("select"); LoadingScreen.go_to(INTRO_SCENE))
 	$UI.add_child(button)
 
 # ── Dictionary ────────────────────────────────────────────────────────────────

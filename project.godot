@@ -21,6 +21,7 @@ LoadingScreen="*res://Scripts/loading_screen.gd"
 StatsManager="*res://Scripts/stats_manager.gd"
 LevelsData="*res://Scripts/levels_data.gd"
 LevelsManager="*res://Scripts/levels_manager.gd"
+AudioManager="*res://Scripts/audio_manager.gd"
 
 [display]
 

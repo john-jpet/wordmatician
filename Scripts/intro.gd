@@ -64,7 +64,7 @@ func _ready():
 	levels_btn.custom_minimum_size   = Vector2(340, 90)
 	levels_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	levels_btn.modulate.a = 0.0
-	levels_btn.pressed.connect(func(): LoadingScreen.go_to("res://Scenes/levels_menu.tscn"))
+	levels_btn.pressed.connect(func(): AudioManager.play("select"); LoadingScreen.go_to("res://Scenes/levels_menu.tscn"))
 	_style_button(levels_btn, false)
 	$VBox.add_child(levels_btn)
 
@@ -232,18 +232,22 @@ func _longest_display() -> String:
 # ── Handlers ──────────────────────────────────────────────────────────────────
 
 func _on_stats_pressed() -> void:
+	AudioManager.play("select")
 	_stats_panel.visible = true
 	_stats_panel.modulate.a = 0.0
 	var tw := create_tween()
 	tw.tween_property(_stats_panel, "modulate:a", 1.0, 0.2).set_trans(Tween.TRANS_SINE)
 
 func _on_stats_closed() -> void:
+	AudioManager.play("select")
 	var tw := create_tween()
 	tw.tween_property(_stats_panel, "modulate:a", 0.0, 0.2).set_trans(Tween.TRANS_SINE)
 	tw.tween_callback(func(): _stats_panel.visible = false)
 
 func _on_play_pressed():
+	AudioManager.play("select")
 	LoadingScreen.go_to(MAIN_SCENE)
 
 func _on_daily_pressed():
+	AudioManager.play("select")
 	LoadingScreen.go_to(DAILY_SCENE)

@@ -299,20 +299,17 @@ func _generate_daily_letters(seed_val: int, out_words: Array = []) -> Array:
 	while total < 25 and attempt < max_attempts:
 		attempt += 1
 		var w: String = pool[rng.randi() % pool.size()]
-		if total + w.length() <= 25:
-			chosen.append(w)
-			total += w.length()
+		var wlen := w.length()
+		if total + wlen > 25:
+			continue  # would overshoot
+		var remaining_after := 25 - (total + wlen)
+		if remaining_after > 0 and remaining_after < 3:
+			continue  # would leave a gap too small for any valid word
+		chosen.append(w)
+		total += wlen
 		if total == 25:
 			break
-	# Fallback: pad with single common letters if needed
-	var padding := ["E","A","R","I","O","T","N","S"]
-	var pi := 0
-	while total < 25:
-		chosen.append(padding[pi % padding.size()])
-		total += 1
-		pi += 1
 
-	# Expose chosen words to caller
 	out_words.clear()
 	for w in chosen:
 		out_words.append(w)
@@ -389,6 +386,7 @@ func letter_tapped(tile):
 	else:
 		selected_letters.append(tile)
 		tile.modulate = Color(0.7, 0.7, 1)
+		AudioManager.play("select")
 	_update_word_label()
 
 func _update_word_label():
@@ -422,6 +420,7 @@ func _check_word():
 		return
 
 	solution_words.append(word)
+	AudioManager.play("word_found")
 
 	# Valid — remove tiles permanently, no refill
 	input_blocked = true
@@ -445,6 +444,7 @@ func _check_word():
 		_on_puzzle_cleared()
 
 func _invalid_feedback():
+	AudioManager.play("mistake")
 	for t in selected_letters:
 		var tw := create_tween()
 		var orig: Vector2 = t.position
@@ -462,6 +462,7 @@ func _invalid_feedback():
 
 func _on_puzzle_cleared():
 	_save_completion()
+	AudioManager.play("fanfare")
 	StatsManager.record_daily_clear()
 	input_blocked = true
 	$UI/WinPanel.visible = true
@@ -472,6 +473,7 @@ func _on_puzzle_cleared():
 	_add_info_button($UI/WinPanel/VBox)
 
 func _on_restart_pressed():
+	AudioManager.play("select")
 	solution_words.clear()
 	selected_letters.clear()
 	current_word_label.text = ""
@@ -481,6 +483,7 @@ func _on_restart_pressed():
 	_block_input_briefly()
 
 func _on_home_pressed():
+	AudioManager.play("select")
 	LoadingScreen.go_to(INTRO_SCENE)
 
 func _show_come_back_tomorrow():

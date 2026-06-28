@@ -62,6 +62,7 @@ func _add_home_button() -> void:
 	add_child(button)
 
 func _on_quit_pressed():
+	AudioManager.play("select")
 	LoadingScreen.go_to(INTRO_SCENE)
 
 # Called by main.gd when the game ends — pass real stats here.

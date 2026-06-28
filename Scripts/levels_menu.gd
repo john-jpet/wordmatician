@@ -69,7 +69,7 @@ func _add_home_button() -> void:
 	button.position = Vector2(screen.x - button.size.x - 16, 16)
 	button.z_index  = 10
 
-	button.pressed.connect(func(): LoadingScreen.go_to(INTRO_SCENE))
+	button.pressed.connect(func(): AudioManager.play("select"); LoadingScreen.go_to(INTRO_SCENE))
 	add_child(button)
 
 # ── Level grid ────────────────────────────────────────────────────────────────
@@ -130,6 +130,7 @@ func _make_level_button(idx: int) -> TextureButton:
 	btn.add_child(lbl)
 
 	btn.pressed.connect(func():
+		AudioManager.play("select")
 		LevelsManager.current_level_idx = idx
 		LoadingScreen.go_to(LEVEL_SCENE)
 	)
