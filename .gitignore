@@ -27,3 +27,5 @@ Builds/
 *.exe
 *.zip
 *.pck
+*.apk
+*.aab
