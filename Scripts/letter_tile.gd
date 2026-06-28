@@ -123,9 +123,5 @@ func _remove_glow() -> void:
 
 func _on_area_2d_input_event(viewport, event, shape_idx):
 	if event is InputEventMouseButton and event.pressed:
-		print("CLICKED:", letter)
-		#print("Parent chain:", get_parent(), " → ", get_parent().get_parent())
 		if get_parent().get_parent().has_method("letter_tapped"):
 			get_parent().get_parent().letter_tapped(self)
-		else:
-			print("❌ main.gd not found in parent chain")

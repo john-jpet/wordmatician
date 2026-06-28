@@ -320,7 +320,6 @@ func _generate_daily_letters(seed_val: int, out_words: Array = []) -> Array:
 		for i in w.length():
 			letters.append(w[i])
 	_shuffle_array(letters, rng)
-	print("[Daily] Seed: %d | Words chosen: %s | Total letters: %d" % [seed_val, str(chosen), letters.size()])
 	return letters
 
 func _shuffle_array(arr: Array, r: RandomNumberGenerator) -> void:

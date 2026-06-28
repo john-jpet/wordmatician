@@ -103,13 +103,145 @@ func _ready():
 	create_buttons()
 	$UI/CurrentWordLabel.text = ""
 
-	# Block input during the intro animation
-	# Longest tile delay: col 4 * 0.06 + row 4 * 0.03 + 0.45s animation = 0.69s
+	# Block input during the intro animation then show tutorial
 	timer_running = false
 	set_process_input(false)
 	await get_tree().create_timer(0.75).timeout
-	set_process_input(true)
-	timer_running = true
+	if not FileAccess.file_exists("user://tutorial_seen"):
+		_show_tutorial()
+	else:
+		set_process_input(true)
+		timer_running = true
+
+# ── Tutorial ──────────────────────────────────────────────────────────────────
+
+func _show_tutorial() -> void:
+	var overlay := ColorRect.new()
+	overlay.color = Color(0, 0, 0, 0.82)
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.z_index = 100
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	$UI.add_child(overlay)
+
+	var screen := get_viewport_rect().size
+	var card_w := 560.0
+	var card_h := 620.0
+	var card   := ColorRect.new()
+	card.color    = Color(0.08, 0.12, 0.25, 0.97)
+	card.position = Vector2((screen.x - card_w) / 2.0, (screen.y - card_h) / 2.0)
+	card.size     = Vector2(card_w, card_h)
+	overlay.add_child(card)
+
+	var bold    := load("res://Assets/Exo2-Bold.ttf")
+	var regular := load("res://Assets/Exo2-Regular.ttf")
+
+	var pages := [
+		{
+			"title": "How to Play",
+			"lines": [
+				["Tap letters to spell a word\n(3 letters minimum)", false],
+				["Tap ✓ to submit, X to cancel", false],
+				["Each valid word adds time\nback to the clock", false],
+				["Longer words & combo streaks\nscore more points", false],
+			]
+		},
+		{
+			"title": "Power-Ups",
+			"lines": [
+				["x2 / x3  —  Multiply your\nentire word score", false],
+				["Bomb  —  Explodes nearby tiles\nfor bonus points. Chains react!", false],
+				["Wild ★  —  Matches any letter\nin the alphabet", false],
+			]
+		},
+	]
+
+	var page := [0]  # Array wrapper so lambdas share the same reference
+
+	var vbox := VBoxContainer.new()
+	vbox.position = Vector2(36, 36)
+	vbox.size     = Vector2(card_w - 72, card_h - 72)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 24)
+	card.add_child(vbox)
+
+	var title_lbl := Label.new()
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var ts := LabelSettings.new()
+	ts.font = bold; ts.font_size = 52; ts.font_color = Color(1, 1, 1)
+	ts.outline_size = 6; ts.outline_color = Color(0.1, 0.15, 0.3, 0.9)
+	ts.shadow_color = Color(0, 0, 0, 0.4); ts.shadow_offset = Vector2(3, 5)
+	title_lbl.label_settings = ts
+	vbox.add_child(title_lbl)
+
+	var divider := ColorRect.new()
+	divider.color = Color(0.3, 0.45, 0.7, 0.4)
+	divider.custom_minimum_size = Vector2(card_w - 72, 2)
+	vbox.add_child(divider)
+
+	var body_labels: Array = []
+	for _i in 4:
+		var lbl := Label.new()
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		var ls := LabelSettings.new()
+		ls.font = regular; ls.font_size = 34; ls.font_color = Color(0.85, 0.9, 1.0)
+		ls.outline_size = 3; ls.outline_color = Color(0.05, 0.1, 0.25, 0.7)
+		lbl.label_settings = ls
+		vbox.add_child(lbl)
+		body_labels.append(lbl)
+
+	var nav_btn := Button.new()
+	nav_btn.flat = true
+	nav_btn.focus_mode = Control.FOCUS_NONE
+	nav_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var ns := StyleBoxFlat.new()
+	ns.bg_color = Color(0.18, 0.32, 0.68, 0.95)
+	ns.corner_radius_top_left = 20; ns.corner_radius_top_right = 20
+	ns.corner_radius_bottom_left = 20; ns.corner_radius_bottom_right = 20
+	ns.shadow_size = 8; ns.shadow_color = Color(0, 0, 0, 0.4)
+	ns.content_margin_left = 32; ns.content_margin_right = 32
+	ns.content_margin_top = 14; ns.content_margin_bottom = 14
+	nav_btn.add_theme_stylebox_override("normal", ns)
+	var nsh := ns.duplicate() as StyleBoxFlat
+	nsh.bg_color = ns.bg_color.lightened(0.12)
+	nav_btn.add_theme_stylebox_override("hover", nsh)
+	nav_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	nav_btn.add_theme_font_override("font", bold)
+	nav_btn.add_theme_font_size_override("font_size", 38)
+	nav_btn.add_theme_color_override("font_color", Color(1, 1, 1))
+	nav_btn.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+	vbox.add_child(nav_btn)
+
+	var _refresh_page := func() -> void:
+		var p: Dictionary = pages[page[0]]
+		title_lbl.text = p["title"]
+		var lines: Array = p["lines"]
+		for i in body_labels.size():
+			var lbl: Label = body_labels[i]
+			if i < lines.size():
+				lbl.text    = lines[i][0]
+				lbl.visible = true
+			else:
+				lbl.visible = false
+		nav_btn.text = "NEXT  →" if page[0] < pages.size() - 1 else "LET'S GO!"
+
+	_refresh_page.call()
+
+	nav_btn.pressed.connect(func():
+		AudioManager.play("select")
+		page[0] += 1
+		if page[0] < pages.size():
+			_refresh_page.call()
+		else:
+			overlay.queue_free()
+			FileAccess.open("user://tutorial_seen", FileAccess.WRITE).close()
+			set_process_input(true)
+			timer_running = true
+	)
+
+	overlay.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(overlay, "modulate:a", 1.0, 0.2).set_trans(Tween.TRANS_SINE)
 
 # Take a fast snapshot of board multiplicities + wildcards + bitmask
 func _board_counts_mask_wild() -> Dictionary:
@@ -148,12 +280,8 @@ func board_has_playable_word():
 					break
 
 		if deficit <= wild:
-			
-			print("[Playable word found]: ", word_str)
 			return true  # early exit when we find one
 
-	
-	print("[No playable words found on this board]")
 	return false
 
 
@@ -651,6 +779,8 @@ func _pick_weighted_letter(live_counts: Dictionary) -> String:
 
 
 func letter_tapped(tile):
+	if not timer_running:
+		return
 	if tile in selected_letters:
 		# --- Deselect ---
 		selected_letters.erase(tile)
@@ -760,9 +890,7 @@ func check_word():
 		
 		
 		var explosion_points := _sum_explosion_points(explosion_dict)
-		print("EXPLOSION POINTS: ", explosion_points)
 		word_mult = _overall_multiplier(selected_letters, explosion_dict)
-		#print("BOMB MULTIPLIER: ", overall_mult)
 		points_to_add = int(base_word_points + explosion_points)
 
 		tiles_to_remove = all_to_clear.values()
@@ -786,11 +914,6 @@ func check_word():
 		points_to_add = int(points_to_add * word_mult)
 	
 	points_to_add += bomb_bonus
-	# Apply results ONCE
-	print("COMBO BONUS: ", COMBO_BONUS)
-	print("BOMB BONUS: ", bomb_bonus)
-	print("MULTIPLIER: ", word_mult)
-	print("WORD SCORE: ", points_to_add)
 	popup_mult_to_show = int(word_mult)
 	score += points_to_add
 	combo += 1
@@ -881,7 +1004,6 @@ func _sum_explosion_points(explosion_dict: Dictionary) -> int:
 func _overall_multiplier(selected_tiles: Array, explosion_dict: Dictionary) -> float:
 	var mult := 0.0
 	var seen := {}
-	print("--- Checking multipliers ---")
 
 	# From selected tiles
 	for t in selected_tiles:
@@ -892,12 +1014,10 @@ func _overall_multiplier(selected_tiles: Array, explosion_dict: Dictionary) -> f
 			continue
 		seen[key] = true
 		if t.powerup == "x2":
-			print("→ x2 in WORD at", t.grid_pos)
 			mult += 2.0
 		elif t.powerup == "x3":
-			print("→ x3 in WORD at", t.grid_pos)
 			mult += 3.0
-	
+
 	# From explosion tiles (don’t double-count)
 	for k in explosion_dict.keys():
 		if seen.has(k):
@@ -906,10 +1026,8 @@ func _overall_multiplier(selected_tiles: Array, explosion_dict: Dictionary) -> f
 		if t == null or not is_instance_valid(t):
 			continue
 		if t.powerup == "x2":
-			print("→ x2 in EXPLOSION at", t.grid_pos)
 			mult += 2.0
 		elif t.powerup == "x3":
-			print("→ x3 in EXPLOSION at", t.grid_pos)
 			mult += 3.0
 	if mult == 0:
 		mult = 1.0
@@ -1172,9 +1290,7 @@ func _trigger_bomb_chain(source_tiles: Array) -> void:
 
 
 func remove_selected():
-	print("Removing selected tiles:", selected_letters.size())
 	for tile in selected_letters:
-		print(" -", tile.letter, tile.grid_pos, tile.powerup)
 		board[tile.grid_pos.y][tile.grid_pos.x] = null
 		remove_tile(tile)
 	selected_letters.clear()
@@ -1272,11 +1388,6 @@ func calculate_word_score(word: String) -> int:
 		return 0
 
 	var base := 2**n * n
-
-	# === DEBUG PRINT ===
-	print("[ScoreCalc] Word:", word,
-		" | Length:", n,
-		" | BaseScore:", base)
 
 	return int(base)
 

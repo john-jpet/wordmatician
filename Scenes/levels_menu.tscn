@@ -1,6 +1,6 @@
-[gd_scene load_steps=3 format=3 uid="uid://bvkq3lmenu00"]
+[gd_scene load_steps=3 format=3 uid="uid://xgadueuw7wyt"]
 
-[ext_resource type="Script" path="res://Scripts/levels_menu.gd" id="1_menu"]
+[ext_resource type="Script" uid="uid://bkw1xwda1agpm" path="res://Scripts/levels_menu.gd" id="1_menu"]
 [ext_resource type="Texture2D" uid="uid://bb7yyucob8c2m" path="res://Assets/bg.png" id="2_bg"]
 
 [node name="LevelsMenu" type="Control"]
