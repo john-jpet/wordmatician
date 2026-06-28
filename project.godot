@@ -13,7 +13,7 @@ config_version=5
 config/name="Wordamatician"
 run/main_scene="res://Scenes/intro.tscn"
 config/features=PackedStringArray("4.5", "Forward Plus")
-config/icon="res://icon.svg"
+config/icon="uid://cxvxuuhu4v0j0"
 
 [autoload]
 
